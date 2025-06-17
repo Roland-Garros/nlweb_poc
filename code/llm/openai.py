@@ -53,6 +53,26 @@ class OpenAIProvider(LLMProvider):
         return api_key
 
     @classmethod
+    def get_api_endpoint(cls) -> str:
+        """
+        Retrieve the OpenAI API endpoint from environment.
+
+        Note: useful when you use openai client to connect to compatible llm api
+        """
+        # Get the API key from the preferred provider config
+        provider_config = CONFIG.llm_endpoints["openai"]
+        endpoint = provider_config.endpoint
+    
+        # Fallback to environment variable
+        endpoint = os.getenv("OPENAI_ENDPOINT")
+        if not endpoint:
+            error_msg = "OpenAI API endpoint not found in configuration or environment"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        return endpoint
+
+
+    @classmethod
     def get_client(cls) -> AsyncOpenAI:
         """
         Configure and return an asynchronous OpenAI client.
@@ -60,7 +80,22 @@ class OpenAIProvider(LLMProvider):
         with cls._client_lock:  # Thread-safe client initialization
             if cls._client is None:
                 api_key = cls.get_api_key()
-                cls._client = AsyncOpenAI(api_key=api_key)
+                endpoint = cls.get_api_endpoint()
+                if not all([endpoint, api_key]):
+                    error_msg = "Missing required OpenAI configuration"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+                    
+                try:
+                    cls._client = AsyncOpenAI(
+                        api_key=api_key, base_url=endpoint,
+                        timeout=30.0  # Set timeout explicitly
+                    )
+                    logger.debug("OpenAI client initialized successfully.\n\tEndpoint: %s", endpoint)
+                except Exception as e:
+                    error_msg = f"Failed to initialize OpenAI client: {e}"
+                    logger.error(error_msg)
+                    return None
         return cls._client
 
     @classmethod
