@@ -150,12 +150,14 @@ class AzureSearchClient:
                                 profile_name: str = "vector_config") -> SearchIndex:
         """Create and return an index definition with specified embedding size"""
         fields = [
+            #SimpleField(name="chunk_id", type=SearchFieldDataType.String, key=True, filterable=True),
             SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
             SimpleField(name="url", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="name", type=SearchFieldDataType.String, filterable=True, sortable=True),
             SimpleField(name="site", type=SearchFieldDataType.String, filterable=True, sortable=True, facetable=True),
             SimpleField(name="schema_json", type=SearchFieldDataType.String, filterable=False),
             SearchField(
+                #name="text_vector",
                 name="embedding",
                 type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
                 vector_search_dimensions=embedding_size,
@@ -597,11 +599,13 @@ class AzureSearchClient:
                     {
                         "kind": "vector",
                         "vector": query_embedding,
+                        #"fields": "text_vector",
                         "fields": "embedding",
                         "k": num_results
                     }
                 ],
                 "top": num_results,
+                #"select": "chunk_id,parent_id,chunk, title"
                 "select": "url,name,site,schema_json"
             }
             
@@ -614,6 +618,7 @@ class AzureSearchClient:
             # Process results into a more convenient format
             processed_results = []
             for result in results:
+                #processed_result = [result["chunk_id"], result["parent_id"], result["chunk"], result["title"]]
                 processed_result = [result["url"], result["schema_json"], result["name"], result["site"]]
                 processed_results.append(processed_result)
             
